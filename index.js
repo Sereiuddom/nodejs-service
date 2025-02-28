@@ -1,27 +1,31 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt'); // For password hashing
 const app = express();
 app.use(express.json());
 
 // MongoDB connection string from MongoDB Atlas (Replace with your actual string)
-const mongoURI = 'mongodb+srv://domz:dom123@cluster0.6mxhr.mongodb.net/';
+const mongoURI = 'mongodb+srv://domz:dom123@cluster0.6mxhr.mongodb.net/students';
 
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.log('Error connecting to MongoDB:', err));
+  .then(() => console.log('✅ MongoDB connected!'))
+  .catch(err => console.log('❌ Error connecting to MongoDB:', err));
+
+mongoose.connection.on('connected', () => console.log('🔗 MongoDB Connection Successful'));
+mongoose.connection.on('error', (err) => console.log('⚠️ MongoDB Error:', err));
 
 // Define the Student schema
 const studentSchema = new mongoose.Schema({
-  sid: String,
-  sname: String,
-  semail: String,
-  spass: String
+  sid: { type: String, unique: true, required: true },
+  sname: { type: String, required: true },
+  semail: { type: String, unique: true, required: true },
+  spass: { type: String, required: true } // Will be hashed
 });
 
 // Create the Student model
 const Student = mongoose.model('Student', studentSchema);
 
-
+// Register a student (with password hashing)
 /*
 {
     "sid": "1",
@@ -38,15 +42,17 @@ app.post('/register', async (req, res) => {
     }
 
     try {
-        const newStudent = new Student({ sid, sname, semail, spass });
+        const hashedPassword = await bcrypt.hash(spass, 10); // Hash password
+        const newStudent = new Student({ sid, sname, semail, spass: hashedPassword });
+
         await newStudent.save();
-        res.status(201).json({ message: 'Student registered successfully', student: newStudent });
+        res.status(201).json({ message: '✅ Student registered successfully', student: newStudent });
     } catch (err) {
-        res.status(500).json({ message: 'Error registering student', error: err });
+        res.status(500).json({ message: '❌ Error registering student', error: err });
     }
 });
 
-// Login a student
+// Login a student (with password comparison)
 /*
 {
     "semail": "alice@example.com",
@@ -61,13 +67,21 @@ app.post('/login', async (req, res) => {
     }
 
     try {
-        const student = await Student.findOne({ semail, spass });
+        const student = await Student.findOne({ semail });
+        console.log("🔍 Login Attempt - Found Student:", student);
+
         if (!student) {
-            return res.status(401).json({ message: 'Invalid email or password' });
+            return res.status(401).json({ message: '❌ Invalid email or password' });
         }
-        res.status(200).json({ message: 'Login successful', student: { sid: student.sid, sname: student.sname, semail: student.semail } });
+
+        const isMatch = await bcrypt.compare(spass, student.spass);
+        if (!isMatch) {
+            return res.status(401).json({ message: '❌ Invalid email or password' });
+        }
+
+        res.status(200).json({ message: '✅ Login successful', student: { sid: student.sid, sname: student.sname, semail: student.semail } });
     } catch (err) {
-        res.status(500).json({ message: 'Error logging in', error: err });
+        res.status(500).json({ message: '❌ Error logging in', error: err });
     }
 });
 
@@ -81,12 +95,15 @@ app.get('/search', async (req, res) => {
 
     try {
         const student = await Student.findOne({ semail });
+        console.log("🔍 Search Result:", student);
+
         if (!student) {
-            return res.status(404).json({ message: 'Student not found' });
+            return res.status(404).json({ message: '❌ Student not found' });
         }
+
         res.status(200).json({ student });
     } catch (err) {
-        res.status(500).json({ message: 'Error searching for student', error: err });
+        res.status(500).json({ message: '❌ Error searching for student', error: err });
     }
 });
 
@@ -101,17 +118,21 @@ app.put('/update/:sid', async (req, res) => {
     const { sname } = req.body;
 
     try {
-        const student = await Student.findOne({ sid });
+        const student = await Student.findOneAndUpdate(
+            { sid },
+            { $set: { sname } },
+            { new: true } // Return updated document
+        );
+
+        console.log("📝 Update Result:", student);
+
         if (!student) {
-            return res.status(404).json({ message: 'Student not found' });
+            return res.status(404).json({ message: '❌ Student not found' });
         }
 
-        if (sname) student.sname = sname;
-        await student.save();
-
-        res.status(200).json({ message: 'Profile updated successfully', student });
+        res.status(200).json({ message: '✅ Profile updated successfully', student });
     } catch (err) {
-        res.status(500).json({ message: 'Error updating profile', error: err });
+        res.status(500).json({ message: '❌ Error updating profile', error: err });
     }
 });
 
@@ -121,15 +142,17 @@ app.delete('/delete/:sid', async (req, res) => {
 
     try {
         const student = await Student.findOneAndDelete({ sid });
+        console.log("🗑️ Delete Result:", student);
+
         if (!student) {
-            return res.status(404).json({ message: 'Student not found' });
+            return res.status(404).json({ message: '❌ Student not found' });
         }
 
-        res.status(200).json({ message: 'Student deleted successfully' });
+        res.status(200).json({ message: '✅ Student deleted successfully' });
     } catch (err) {
-        res.status(500).json({ message: 'Error deleting student', error: err });
+        res.status(500).json({ message: '❌ Error deleting student', error: err });
     }
 });
 
 // Start the server on port 5000
-app.listen(5000, () => console.log('Server running on port 5000'));
+app.listen(5000, () => console.log('🚀 Server running on port 5000'));  
