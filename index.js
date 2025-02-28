@@ -1,10 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt'); // For password hashing
+const bcrypt = require('bcrypt'); 
 const app = express();
 app.use(express.json());
 
-// MongoDB connection string from MongoDB Atlas (Replace with your actual string)
+
 const mongoURI = 'mongodb+srv://domz:dom123@cluster0.6mxhr.mongodb.net/students';
 
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -14,18 +14,18 @@ mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
 mongoose.connection.on('connected', () => console.log('🔗 MongoDB Connection Successful'));
 mongoose.connection.on('error', (err) => console.log('⚠️ MongoDB Error:', err));
 
-// Define the Student schema
+
 const studentSchema = new mongoose.Schema({
   sid: { type: String, unique: true, required: true },
   sname: { type: String, required: true },
   semail: { type: String, unique: true, required: true },
-  spass: { type: String, required: true } // Will be hashed
+  spass: { type: String, required: true } 
 });
 
-// Create the Student model
+
 const Student = mongoose.model('Student', studentSchema);
 
-// Register a student (with password hashing)
+
 /*
 {
     "sid": "1",
@@ -42,7 +42,7 @@ app.post('/register', async (req, res) => {
     }
 
     try {
-        const hashedPassword = await bcrypt.hash(spass, 10); // Hash password
+        const hashedPassword = await bcrypt.hash(spass, 10); 
         const newStudent = new Student({ sid, sname, semail, spass: hashedPassword });
 
         await newStudent.save();
@@ -52,7 +52,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Login a student (with password comparison)
+
 /*
 {
     "semail": "alice@example.com",
@@ -121,7 +121,7 @@ app.put('/update/:sid', async (req, res) => {
         const student = await Student.findOneAndUpdate(
             { sid },
             { $set: { sname } },
-            { new: true } // Return updated document
+            { new: true } 
         );
 
         console.log("📝 Update Result:", student);
