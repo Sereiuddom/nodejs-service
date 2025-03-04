@@ -110,27 +110,42 @@ app.get('/search', async (req, res) => {
 // Update student profile
 /*
 {
-    "sname": "John"
+    "sname": "John",
+    "semail": "newemail@example.com",
+    "spass": "newPassword123"
 }
 */
 app.put('/update/:sid', async (req, res) => {
     const { sid } = req.params;
-    const { sname } = req.body;
+    const { sname, semail, spass } = req.body;  // Accept sname, semail, and spass
 
     try {
+        let updateFields = {};  // Initialize an empty object to store fields to be updated
+
+        // Only update fields that are provided
+        if (sname) updateFields.sname = sname;
+        if (semail) updateFields.semail = semail;
+        if (spass) {
+            const hashedPassword = await bcrypt.hash(spass, 10);  // Hash the new password if provided
+            updateFields.spass = hashedPassword;
+        }
+
+        // Perform the update using findOneAndUpdate method
         const student = await Student.findOneAndUpdate(
-            { sid },
-            { $set: { sname } },
-            { new: true } 
+            { sid },  // Search by sid
+            { $set: updateFields },  // Update only the fields passed
+            { new: true }  // Return the updated document
         );
 
         console.log("📝 Update Result:", student);
 
+        // If student not found
         if (!student) {
             return res.status(404).json({ message: '❌ Student not found' });
         }
 
         res.status(200).json({ message: '✅ Profile updated successfully', student });
+
     } catch (err) {
         res.status(500).json({ message: '❌ Error updating profile', error: err });
     }
@@ -155,4 +170,4 @@ app.delete('/delete/:sid', async (req, res) => {
 });
 
 // Start the server on port 5000
-app.listen(5000, () => console.log('🚀 Server running on port 5000'));  
+app.listen(5000, '0.0.0.0', () => console.log('🚀 Server running on port 5000'));  
